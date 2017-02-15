@@ -76,9 +76,8 @@ module OmniAuth
           raise ArgumentError.new("No token secret provided.")
         end
 
-        self.access_token = build_access_token
+        access_token = build_access_token
         
-
         # TODO: Validate the token
 
         # Preserve compatibility with the google provider in normal case
