@@ -36,11 +36,6 @@ module OmniAuth
       rescue ::Errno::ETIMEDOUT
         raise ::Timeout::Error
       end
-      
-      def client
-              ::OAuth::Consumer.new(options.client_id, options.client_secret, deep_symbolize(options.client_options))
-      end
-      
 
       alias :old_request_phase :request_phase
 
@@ -68,23 +63,15 @@ module OmniAuth
       
       
       def callback_phase
-        if !request.params['access_token'] || request.params['access_token'].to_s.empty?
-          raise ArgumentError.new("No access token provided.")
+        if access_token = request.params["access_token"]
+          token_secret = request.params["token_secret"]
+          options.provider_ignores_state = true
+          super
+        else
+                  with_authorization_code! do
+                    super
+                  end
         end
-        
-        if !request.params['token_secret'] || request.params['token_secret'].to_s.empty?
-          raise ArgumentError.new("No token secret provided.")
-        end
-
-        access_token = build_access_token
-        
-        # TODO: Validate the token
-
-        # Preserve compatibility with the google provider in normal case
-        hash = auth_hash
-        hash[:provider] = "twitter"
-        self.env['omniauth.auth'] = hash
-        call_app!
 
       rescue ::OAuth2::Error => e
         fail!(:invalid_credentials, e)
@@ -95,6 +82,8 @@ module OmniAuth
       rescue ::SocketError => e
         fail!(:failed_to_connect, e)
       end
+      
+      
 
       alias :old_callback_url :callback_url
 
@@ -117,21 +106,6 @@ module OmniAuth
       end
 
       private
-      
-      def deep_symbolize(hash)
-              hash.inject({}) do |h, (k,v)|
-                h[k.to_sym] = v.is_a?(Hash) ? deep_symbolize(v) : v
-                h
-              end
-      end
-      
-      def build_access_token
-              ::OAuth::AccessToken.new(
-                client,
-                request.params["access_token"],
-                request.params["token_secret"]
-              )
-      end
 
       def image_url
         original_url = options[:secure_image_url] ? raw_info['profile_image_url_https'] : raw_info['profile_image_url']
