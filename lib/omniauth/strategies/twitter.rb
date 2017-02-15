@@ -60,6 +60,37 @@ module OmniAuth
 
         old_request_phase
       end
+      
+      
+      def callback_phase
+        if !request.params['access_token'] || request.params['access_token'].to_s.empty?
+          raise ArgumentError.new("No access token provided.")
+        end
+        
+        if !request.params['token_secret'] || request.params['token_secret'].to_s.empty?
+          raise ArgumentError.new("No token secret provided.")
+        end
+
+        self.access_token = build_access_token
+        
+
+        # TODO: Validate the token
+
+        # Preserve compatibility with the google provider in normal case
+        hash = auth_hash
+        hash[:provider] = "twitter"
+        self.env['omniauth.auth'] = hash
+        call_app!
+
+      rescue ::OAuth2::Error => e
+        fail!(:invalid_credentials, e)
+      rescue ::MultiJson::DecodeError => e
+        fail!(:invalid_response, e)
+      rescue ::Timeout::Error, ::Errno::ETIMEDOUT => e
+        fail!(:timeout, e)
+      rescue ::SocketError => e
+        fail!(:failed_to_connect, e)
+      end
 
       alias :old_callback_url :callback_url
 
@@ -82,6 +113,14 @@ module OmniAuth
       end
 
       private
+      
+      def build_access_token
+              ::OAuth::AccessToken.new(
+                client,
+                request.params["access_token"],
+                request.params["token_secret"]
+              )
+      end
 
       def image_url
         original_url = options[:secure_image_url] ? raw_info['profile_image_url_https'] : raw_info['profile_image_url']
