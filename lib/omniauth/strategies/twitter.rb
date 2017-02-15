@@ -119,6 +119,13 @@ module OmniAuth
 
       private
       
+      def deep_symbolize(hash)
+              hash.inject({}) do |h, (k,v)|
+                h[k.to_sym] = v.is_a?(Hash) ? deep_symbolize(v) : v
+                h
+              end
+      end
+      
       def build_access_token
               ::OAuth::AccessToken.new(
                 client,
