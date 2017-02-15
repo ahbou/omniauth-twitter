@@ -36,6 +36,11 @@ module OmniAuth
       rescue ::Errno::ETIMEDOUT
         raise ::Timeout::Error
       end
+      
+      def client
+              ::OAuth::Consumer.new(options.client_id, options.client_secret, deep_symbolize(options.client_options))
+      end
+      
 
       alias :old_request_phase :request_phase
 
